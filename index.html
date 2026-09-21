@@ -4,12 +4,39 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Android Security Lab</title>
 </head>
+
 <body>
   <h1>Android Security Lab</h1>
-  <p>This is a security-awareness test.</p>
 
-  <button onclick="alert('Simulation only — no data was collected.')">
-    Test
-  </button>
+  <p>Security-awareness demonstration.</p>
+
+  <button onclick="showInfo()">Show Browser Information</button>
+
+  <pre id="info"></pre>
+
+  <script>
+    function showInfo() {
+      const info = `
+Browser information:
+
+User agent:
+${navigator.userAgent}
+
+Language:
+${navigator.language}
+
+Screen:
+${screen.width} × ${screen.height}
+
+Time zone:
+${Intl.DateTimeFormat().resolvedOptions().timeZone}
+
+JavaScript:
+Enabled
+      `;
+
+      document.getElementById("info").textContent = info;
+    }
+  </script>
 </body>
 </html>
