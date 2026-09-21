@@ -58,10 +58,6 @@
       cursor: pointer;
     }
 
-    button:active {
-      transform: scale(0.98);
-    }
-
     .result {
       display: none;
       margin-top: 25px;
@@ -71,19 +67,27 @@
       border: 1px solid #334155;
     }
 
-    .warning {
-      color: #fbbf24;
+    .risk {
+      font-size: 24px;
       font-weight: bold;
+      margin-bottom: 15px;
     }
 
-    .safe {
+    .high {
+      color: #ef4444;
+    }
+
+    .medium {
+      color: #fbbf24;
+    }
+
+    .low {
       color: #4ade80;
-      font-weight: bold;
     }
 
     .item {
       margin: 10px 0;
-      padding: 10px;
+      padding: 12px;
       background: #0f172a;
       border-radius: 8px;
     }
@@ -133,80 +137,192 @@
 
       if (!input) {
         result.style.display = "block";
-        result.innerHTML =
-          "<p class='warning'>Please enter a message or URL first.</p>";
+
+        result.innerHTML = `
+          <div class="risk medium">
+            No input
+          </div>
+
+          <div class="item">
+            Enter a message, email, or URL to analyze.
+          </div>
+        `;
+
         return;
       }
 
-      let warnings = [];
-
-      const suspiciousWords = [
-        "password",
-        "verify your account",
-        "urgent",
-        "click here",
-        "login",
-        "gift",
-        "winner",
-        "prize",
-        "confirm your account",
-        "free"
-      ];
-
       const lowerInput = input.toLowerCase();
 
-      suspiciousWords.forEach(function(word) {
+      let score = 0;
+      let warnings = [];
 
-        if (lowerInput.includes(word)) {
-          warnings.push(word);
+      /* Suspicious language */
+
+      const warningPatterns = [
+
+        {
+          text: "urgent",
+          points: 2,
+          reason: "Creates pressure to act quickly."
+        },
+
+        {
+          text: "verify your account",
+          points: 2,
+          reason: "Requests account verification."
+        },
+
+        {
+          text: "click here",
+          points: 2,
+          reason: "Encourages clicking a link."
+        },
+
+        {
+          text: "password",
+          points: 3,
+          reason: "Mentions sensitive authentication information."
+        },
+
+        {
+          text: "verification code",
+          points: 3,
+          reason: "May involve a sensitive security code."
+        },
+
+        {
+          text: "recovery phrase",
+          points: 4,
+          reason: "Recovery phrases are highly sensitive."
+        },
+
+        {
+          text: "winner",
+          points: 2,
+          reason: "Prize-related language can be used in scams."
+        },
+
+        {
+          text: "prize",
+          points: 2,
+          reason: "Prize-related language can be used in scams."
+        },
+
+        {
+          text: "free",
+          points: 1,
+          reason: "Free offers can sometimes be used to attract victims."
+        }
+
+      ];
+
+      warningPatterns.forEach(function(pattern) {
+
+        if (lowerInput.includes(pattern.text)) {
+
+          score += pattern.points;
+
+          warnings.push({
+            text: pattern.text,
+            reason: pattern.reason
+          });
+
         }
 
       });
 
-      result.style.display = "block";
+      /* URL detection */
 
-      if (warnings.length > 0) {
+      const urlPattern = /(https?:\/\/[^\s]+)/gi;
+      const urls = input.match(urlPattern);
 
-        result.innerHTML = `
-          <h2 class="warning">Potential Warning Signs</h2>
+      if (urls) {
 
-          <div class="item">
-            Suspicious indicators detected:
-            <strong>${warnings.length}</strong>
-          </div>
+        score += 1;
 
-          <div class="item">
-            Detected terms:
-            ${warnings.join(", ")}
-          </div>
+        warnings.push({
+          text: "URL detected",
+          reason: "Links should be independently verified before opening."
+        });
 
-          <div class="item">
-            Do not enter passwords, verification codes,
-            recovery phrases, or financial information.
-          </div>
+      }
 
-          <div class="item">
-            Verify the sender and website through an
-            official source before taking action.
-          </div>
-        `;
+      /* Risk calculation */
+
+      let riskLevel;
+      let riskClass;
+
+      if (score >= 6) {
+
+        riskLevel = "HIGH RISK";
+        riskClass = "high";
+
+      } else if (score >= 3) {
+
+        riskLevel = "MEDIUM RISK";
+        riskClass = "medium";
 
       } else {
 
-        result.innerHTML = `
-          <h2 class="safe">No obvious indicators detected</h2>
+        riskLevel = "LOW RISK";
+        riskClass = "low";
 
-          <div class="item">
-            This tool did not find the basic warning
-            patterns it currently checks.
-          </div>
+      }
 
+      result.style.display = "block";
+
+      let warningHTML = "";
+
+      if (warnings.length > 0) {
+
+        warnings.forEach(function(warning) {
+
+          warningHTML += `
+            <div class="item">
+              <strong>${warning.text}</strong><br>
+              ${warning.reason}
+            </div>
+          `;
+
+        });
+
+      } else {
+
+        warningHTML = `
           <div class="item">
-            This does NOT prove that the message or URL
-            is safe. Always verify the source.
+            No obvious warning patterns were detected.
           </div>
         `;
+
       }
+
+      result.innerHTML = `
+
+        <div class="risk ${riskClass}">
+          ${riskLevel}
+        </div>
+
+        <div class="item">
+          Risk score: <strong>${score}</strong>
+        </div>
+
+        ${warningHTML}
+
+        <div class="item">
+          <strong>Safety advice:</strong><br>
+          Do not provide passwords, verification codes,
+          recovery phrases, or financial information to
+          an unverified source.
+        </div>
+
+        <div class="item">
+          This is an automated security-awareness assessment.
+          A risk score does not prove that a message is malicious
+          or safe.
+        </div>
+
+      `;
+
     }
 
   </script>
