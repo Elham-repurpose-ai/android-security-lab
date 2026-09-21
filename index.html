@@ -8,34 +8,30 @@
 <body>
   <h1>Android Security Lab</h1>
 
-  <p>Security-awareness demonstration.</p>
+  <p>Permission-awareness demonstration.</p>
 
-  <button onclick="showInfo()">Show Browser Information</button>
+  <button onclick="requestCamera()">Test Camera Permission</button>
 
-  <pre id="info"></pre>
+  <p id="result"></p>
 
   <script>
-    function showInfo() {
-      const info = `
-Browser information:
+    async function requestCamera() {
+      const result = document.getElementById("result");
 
-User agent:
-${navigator.userAgent}
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true
+        });
 
-Language:
-${navigator.language}
+        result.textContent =
+          "Camera permission was granted. No photo or video was recorded.";
 
-Screen:
-${screen.width} × ${screen.height}
+        stream.getTracks().forEach(track => track.stop());
 
-Time zone:
-${Intl.DateTimeFormat().resolvedOptions().timeZone}
-
-JavaScript:
-Enabled
-      `;
-
-      document.getElementById("info").textContent = info;
+      } catch (error) {
+        result.textContent =
+          "Camera permission was denied or unavailable.";
+      }
     }
   </script>
 </body>
