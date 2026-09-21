@@ -231,7 +231,7 @@
 
       });
 
-/* URL detection */
+ /* URL detection /*
 
 const urlPattern = /(https?:\/\/[^\s]+)/gi;
 const urls = input.match(urlPattern);
@@ -255,6 +255,40 @@ if (urls) {
 
       /* Suspicious URL characteristics */
 
+      if (hostname.includes("-") || hostname.includes("@")) {
+
+        score += 2;
+
+        warnings.push({
+          text: "Suspicious URL structure",
+          reason: "The link contains characteristics that deserve additional verification."
+        });
+
+      }
+
+      if (link.protocol !== "https:") {
+
+        score += 2;
+
+        warnings.push({
+          text: "Insecure connection",
+          reason: "The link does not use HTTPS."
+        });
+
+      }
+
+    } catch (error) {
+
+      warnings.push({
+        text: "Invalid URL format",
+        reason: "The detected link could not be parsed normally."
+      });
+
+    }
+
+  });
+
+}
       if (hostname.includes("-") || hostname.includes("@")) {
 
         score += 2;
