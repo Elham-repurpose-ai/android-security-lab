@@ -1,38 +1,215 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Android Security Lab</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>CyberSafe AI</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: auto;
+      padding: 30px 18px;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      margin-bottom: 25px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      padding: 15px;
+      border-radius: 12px;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: white;
+      font-size: 16px;
+      resize: vertical;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 15px;
+      padding: 15px;
+      border: 0;
+      border-radius: 12px;
+      background: #2563eb;
+      color: white;
+      font-size: 17px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .result {
+      display: none;
+      margin-top: 25px;
+      padding: 20px;
+      border-radius: 12px;
+      background: #1e293b;
+      border: 1px solid #334155;
+    }
+
+    .warning {
+      color: #fbbf24;
+      font-weight: bold;
+    }
+
+    .safe {
+      color: #4ade80;
+      font-weight: bold;
+    }
+
+    .item {
+      margin: 10px 0;
+      padding: 10px;
+      background: #0f172a;
+      border-radius: 8px;
+    }
+
+    footer {
+      margin-top: 30px;
+      text-align: center;
+      color: #64748b;
+      font-size: 13px;
+    }
+  </style>
 </head>
 
 <body>
-  <h1>Android Security Lab</h1>
 
-  <p>Permission-awareness demonstration.</p>
+  <div class="container">
 
-  <button onclick="requestCamera()">Test Camera Permission</button>
+    <h1>CyberSafe AI</h1>
 
-  <p id="result"></p>
+    <p class="subtitle">
+      Security awareness assistant for suspicious messages and links.
+    </p>
+
+    <textarea
+      id="input"
+      placeholder="Paste a suspicious message, email, or URL here...">
+    </textarea>
+
+    <button onclick="analyze()">
+      Analyze
+    </button>
+
+    <div id="result" class="result"></div>
+
+    <footer>
+      CyberSafe AI — Security Awareness Tool
+    </footer>
+
+  </div>
 
   <script>
-    async function requestCamera() {
+
+    function analyze() {
+
+      const input = document.getElementById("input").value.trim();
       const result = document.getElementById("result");
 
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true
-        });
+      if (!input) {
+        result.style.display = "block";
+        result.innerHTML =
+          "<p class='warning'>Please enter a message or URL first.</p>";
+        return;
+      }
 
-        result.textContent =
-          "Camera permission was granted. No photo or video was recorded.";
+      let warnings = [];
 
-        stream.getTracks().forEach(track => track.stop());
+      const suspiciousWords = [
+        "password",
+        "verify your account",
+        "urgent",
+        "click here",
+        "login",
+        "gift",
+        "winner",
+        "prize",
+        "confirm your account",
+        "free"
+      ];
 
-      } catch (error) {
-        result.textContent =
-          "Camera permission was denied or unavailable.";
+      const lowerInput = input.toLowerCase();
+
+      suspiciousWords.forEach(function(word) {
+
+        if (lowerInput.includes(word)) {
+          warnings.push(word);
+        }
+
+      });
+
+      result.style.display = "block";
+
+      if (warnings.length > 0) {
+
+        result.innerHTML = `
+          <h2 class="warning">Potential Warning Signs</h2>
+
+          <div class="item">
+            Suspicious indicators detected:
+            <strong>${warnings.length}</strong>
+          </div>
+
+          <div class="item">
+            Detected terms:
+            ${warnings.join(", ")}
+          </div>
+
+          <div class="item">
+            Do not enter passwords, verification codes,
+            recovery phrases, or financial information.
+          </div>
+
+          <div class="item">
+            Verify the sender and website through an
+            official source before taking action.
+          </div>
+        `;
+
+      } else {
+
+        result.innerHTML = `
+          <h2 class="safe">No obvious indicators detected</h2>
+
+          <div class="item">
+            This tool did not find the basic warning
+            patterns it currently checks.
+          </div>
+
+          <div class="item">
+            This does NOT prove that the message or URL
+            is safe. Always verify the source.
+          </div>
+        `;
       }
     }
+
   </script>
+
 </body>
 </html>
