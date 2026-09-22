@@ -113,8 +113,7 @@
 
     <textarea
       id="input"
-      placeholder="Paste a suspicious message, email, or URL here...">
-    </textarea>
+      placeholder="Paste a suspicious message, email, or URL here..."></textarea>
 
     <button onclick="analyze()">
       Analyze
@@ -173,7 +172,7 @@
         },
 
         {
-          text: "click here",
+          text: "click",
           points: 2,
           reason: "Encourages clicking a link."
         },
@@ -212,6 +211,24 @@
           text: "free",
           points: 1,
           reason: "Free offers can sometimes be used to attract victims."
+        },
+
+        {
+          text: "gift",
+          points: 1,
+          reason: "Gift-related offers can sometimes be used in scams."
+        },
+
+        {
+          text: "confirm your account",
+          points: 2,
+          reason: "Requests account confirmation."
+        },
+
+        {
+          text: "login",
+          points: 2,
+          reason: "Login-related language can be used in credential scams."
         }
 
       ];
@@ -231,99 +248,76 @@
 
       });
 
- /* URL detection /*
 
-const urlPattern = /(https?:\/\/[^\s]+)/gi;
-const urls = input.match(urlPattern);
+      /* URL detection */
 
-if (urls) {
+      const urlPattern = /https?:\/\/[^\s]+/gi;
+      const urls = input.match(urlPattern);
 
-  urls.forEach(function(url) {
+      if (urls) {
 
-    score += 1;
+        urls.forEach(function(url) {
 
-    warnings.push({
-      text: "URL detected",
-      reason: "A link was found. Verify the domain before opening it."
-    });
+          score += 1;
 
-    try {
+          warnings.push({
+            text: "URL detected",
+            reason: "A link was found. Verify the domain before opening it."
+          });
 
-      const link = new URL(url);
+          try {
 
-      const hostname = link.hostname.toLowerCase();
+            const cleanUrl = url.replace(/[.,!?;:)\]}]+$/g, "");
+            const link = new URL(cleanUrl);
 
-      /* Suspicious URL characteristics */
+            const hostname = link.hostname.toLowerCase();
 
-      if (hostname.includes("-") || hostname.includes("@")) {
+            if (link.protocol !== "https:") {
 
-        score += 2;
+              score += 2;
 
-        warnings.push({
-          text: "Suspicious URL structure",
-          reason: "The link contains characteristics that deserve additional verification."
+              warnings.push({
+                text: "Insecure connection",
+                reason: "The link does not use HTTPS."
+              });
+
+            }
+
+            if (hostname.includes("@")) {
+
+              score += 2;
+
+              warnings.push({
+                text: "Suspicious URL structure",
+                reason: "The URL contains an unusual structure that should be verified."
+              });
+
+            }
+
+            if (hostname.includes("-")) {
+
+              score += 1;
+
+              warnings.push({
+                text: "Unusual domain structure",
+                reason: "The domain contains a hyphen. Verify that it belongs to the expected organization."
+              });
+
+            }
+
+          } catch (error) {
+
+            warnings.push({
+              text: "URL format warning",
+              reason: "The detected link could not be fully analyzed."
+            });
+
+          }
+
         });
 
       }
 
-      if (link.protocol !== "https:") {
-
-        score += 2;
-
-        warnings.push({
-          text: "Insecure connection",
-          reason: "The link does not use HTTPS."
-        });
-
-      }
-
-    } catch (error) {
-
-      warnings.push({
-        text: "Invalid URL format",
-        reason: "The detected link could not be parsed normally."
-      });
-
-    }
-
-  });
-
-}
-      if (hostname.includes("-") || hostname.includes("@")) {
-
-        score += 2;
-
-        warnings.push({
-          text: "Suspicious URL structure",
-          reason: "The link contains characteristics that deserve additional verification."
-        });
-
-      }
-
-      if (link.protocol !== "https:") {
-
-        score += 2;
-
-        warnings.push({
-          text: "Insecure connection",
-          reason: "The link does not use HTTPS."
-        });
-
-      }
-
-    } catch (error) {
-
-      warnings.push({
-        text: "Invalid URL format",
-        reason: "The detected link could not be parsed normally."
-      });
-
-    }
-
-  });
-
-}
-      }
 
       /* Risk calculation */
 
@@ -346,6 +340,9 @@ if (urls) {
         riskClass = "low";
 
       }
+
+
+      /* Display result */
 
       result.style.display = "block";
 
@@ -373,6 +370,7 @@ if (urls) {
         `;
 
       }
+
 
       result.innerHTML = `
 
