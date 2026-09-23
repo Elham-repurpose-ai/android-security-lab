@@ -16,9 +16,8 @@ module.exports = async (req, res) => {
 
     const submittedText = text.slice(0, 8000);
 
-    const urlMatches = submittedText.match(
-      /https?:\/\/[^\s<>"']+/gi
-    ) || [];
+    const urlMatches =
+      submittedText.match(/https?:\/\/[^\s<>"']+/gi) || [];
 
     const technicalFindings = [];
 
@@ -27,6 +26,10 @@ module.exports = async (req, res) => {
 
       try {
         const parsed = new URL(cleanUrl);
+        const hostname = parsed.hostname.toLowerCase();
+
+        const isIPv4 =
+          /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname);
 
         if (parsed.protocol === "http:") {
           technicalFindings.push(
@@ -34,7 +37,7 @@ module.exports = async (req, res) => {
           );
         }
 
-        if (/^\d{1,3}(\.\d{1,3}){3}$/.test(parsed.hostname)) {
+        if (isIPv4) {
           technicalFindings.push(
             "URL uses an IP address instead of a normal domain name."
           );
@@ -46,23 +49,18 @@ module.exports = async (req, res) => {
           );
         }
 
-        if (parsed.hostname.includes("xn--")) {
+        if (hostname.includes("xn--")) {
           technicalFindings.push(
             "Domain contains punycode, which can sometimes be used in look-alike domains."
           );
         }
 
-        if (parsed.port && !["80", "443"].includes(parsed.port)) {
+        if (
+          parsed.port &&
+          !["80", "443"].includes(parsed.port)
+        ) {
           technicalFindings.push(
             `URL uses a non-standard port: ${parsed.port}.`
-          );
-        }
-
-        const parts = parsed.hostname.split(".");
-
-        if (parts.length >= 5) {
-          technicalFindings.push(
-            "Domain contains an unusually large number of subdomains."
           );
         }
 
@@ -101,53 +99,53 @@ module.exports = async (req, res) => {
         }
 
         /*
-         * NEW DOMAIN ANALYSIS
+         * Normal domain analysis.
+         * IP addresses are excluded from these checks.
          */
 
-        const hostname = parsed.hostname.toLowerCase();
+        if (!isIPv4) {
+          const suspiciousDomainTerms =
+            /login|verify|secure|account|update|support|wallet|payment|password|gift|claim/i;
 
-        const suspiciousTerms =
-          /login|verify|secure|account|update|support|wallet|payment|password|gift|claim/i;
+          if (suspiciousDomainTerms.test(hostname)) {
+            technicalFindings.push(
+              "Domain contains security-sensitive or account-related terms."
+            );
+          }
 
-        if (suspiciousTerms.test(hostname)) {
-          technicalFindings.push(
-            "Domain contains security-sensitive or account-related terms."
-          );
-        }
+          const hyphenCount =
+            (hostname.match(/-/g) || []).length;
 
-        const hyphenCount =
-          (hostname.match(/-/g) || []).length;
+          if (hyphenCount >= 3) {
+            technicalFindings.push(
+              "Domain contains multiple hyphens, which can occur in look-alike domains."
+            );
+          }
 
-        if (hyphenCount >= 3) {
-          technicalFindings.push(
-            "Domain contains multiple hyphens, which can occur in look-alike domains."
-          );
-        }
+          const digitCount =
+            (hostname.match(/\d/g) || []).length;
 
-        const digitCount =
-          (hostname.match(/\d/g) || []).length;
+          if (digitCount >= 4) {
+            technicalFindings.push(
+              "Domain contains an unusually high number of digits."
+            );
+          }
 
-        if (digitCount >= 4) {
-          technicalFindings.push(
-            "Domain contains an unusually high number of digits."
-          );
-        }
+          const labels = hostname.split(".");
 
-        const labels = hostname.split(".");
+          if (labels.length >= 5) {
+            technicalFindings.push(
+              "Domain contains an unusually large number of subdomains."
+            );
+          }
 
-        if (labels.some(label => label.length > 30)) {
-          technicalFindings.push(
-            "Domain contains an unusually long hostname section."
-          );
-        }
-
-        if (
-          labels.length >= 3 &&
-          labels[labels.length - 2].length <= 2
-        ) {
-          technicalFindings.push(
-            "Domain structure may require additional verification."
-          );
+          if (
+            labels.some(label => label.length > 30)
+          ) {
+            technicalFindings.push(
+              "Domain contains an unusually long hostname section."
+            );
+          }
         }
 
       } catch {
@@ -157,9 +155,17 @@ module.exports = async (req, res) => {
       }
     }
 
+    /*
+     * Remove duplicate findings.
+     */
+
+    const uniqueTechnicalFindings = [
+      ...new Set(technicalFindings)
+    ];
+
     const technicalSummary =
-      technicalFindings.length > 0
-        ? technicalFindings
+      uniqueTechnicalFindings.length > 0
+        ? uniqueTechnicalFindings
         : ["No obvious technical URL anomalies were detected."];
 
     const response = await fetch(
@@ -191,6 +197,9 @@ Important:
 - Do not claim that a URL is safe merely because it uses HTTPS.
 - Do not claim that a URL is malicious without sufficient evidence.
 - Do not request passwords, verification codes, recovery phrases, or other secrets.
+- Do not treat an IP address itself as proof that a URL is malicious.
+- Do not treat HTTP, unusual ports, keywords, or domain structure individually
+  as proof of maliciousness.
 
 Return ONLY valid JSON in exactly this structure:
 
@@ -221,6 +230,8 @@ Technical URL inspection findings:
 ${technicalSummary.join("\n")}
 
 Combine the submitted content and the technical findings.
+Treat technical findings as indicators rather than proof of maliciousness.
+
 Return ONLY the required JSON object.
 `
             }
@@ -245,7 +256,7 @@ Return ONLY the required JSON object.
 
     return res.status(200).json({
       result: content,
-      technicalFindings
+      technicalFindings: uniqueTechnicalFindings
     });
 
   } catch (error) {
