@@ -238,7 +238,7 @@ Return ONLY the required JSON object.
           ],
 
           temperature: 0.1,
-          max_tokens: 600
+          max_tokens: 1000
         })
       }
     );
