@@ -16,7 +16,6 @@ module.exports = async (req, res) => {
 
     const submittedText = text.slice(0, 8000);
 
-    // Find URLs inside the submitted text.
     const urlMatches = submittedText.match(
       /https?:\/\/[^\s<>"']+/gi
     ) || [];
@@ -29,60 +28,50 @@ module.exports = async (req, res) => {
       try {
         const parsed = new URL(cleanUrl);
 
-        // HTTPS / HTTP
         if (parsed.protocol === "http:") {
           technicalFindings.push(
             "URL uses HTTP instead of HTTPS."
           );
         }
 
-        // IP address instead of normal domain
         if (/^\d{1,3}(\.\d{1,3}){3}$/.test(parsed.hostname)) {
           technicalFindings.push(
             "URL uses an IP address instead of a normal domain name."
           );
         }
 
-        // Userinfo trick: https://user:password@example.com
         if (parsed.username || parsed.password) {
           technicalFindings.push(
             "URL contains embedded username/password information."
           );
         }
 
-        // Punycode
         if (parsed.hostname.includes("xn--")) {
           technicalFindings.push(
             "Domain contains punycode, which can sometimes be used in look-alike domains."
           );
         }
 
-        // Suspicious ports
-        if (
-          parsed.port &&
-          !["80", "443"].includes(parsed.port)
-        ) {
+        if (parsed.port && !["80", "443"].includes(parsed.port)) {
           technicalFindings.push(
             `URL uses a non-standard port: ${parsed.port}.`
           );
         }
 
-        // Excessive subdomains
         const parts = parsed.hostname.split(".");
+
         if (parts.length >= 5) {
           technicalFindings.push(
             "Domain contains an unusually large number of subdomains."
           );
         }
 
-        // Very long URL
         if (cleanUrl.length > 200) {
           technicalFindings.push(
             "URL is unusually long."
           );
         }
 
-        // Suspicious path words
         const suspiciousPath =
           /login|verify|verification|password|reset|secure|account|wallet|claim|gift|payment/i;
 
@@ -92,7 +81,6 @@ module.exports = async (req, res) => {
           );
         }
 
-        // Suspicious file extensions
         if (
           /\.(exe|apk|scr|bat|cmd|msi|zip|rar)$/i.test(
             parsed.pathname
@@ -103,12 +91,62 @@ module.exports = async (req, res) => {
           );
         }
 
-        // Many query parameters
-        const parameterCount = [...parsed.searchParams.keys()].length;
+        const parameterCount =
+          [...parsed.searchParams.keys()].length;
 
         if (parameterCount >= 6) {
           technicalFindings.push(
             "URL contains an unusually large number of parameters."
+          );
+        }
+
+        /*
+         * NEW DOMAIN ANALYSIS
+         */
+
+        const hostname = parsed.hostname.toLowerCase();
+
+        const suspiciousTerms =
+          /login|verify|secure|account|update|support|wallet|payment|password|gift|claim/i;
+
+        if (suspiciousTerms.test(hostname)) {
+          technicalFindings.push(
+            "Domain contains security-sensitive or account-related terms."
+          );
+        }
+
+        const hyphenCount =
+          (hostname.match(/-/g) || []).length;
+
+        if (hyphenCount >= 3) {
+          technicalFindings.push(
+            "Domain contains multiple hyphens, which can occur in look-alike domains."
+          );
+        }
+
+        const digitCount =
+          (hostname.match(/\d/g) || []).length;
+
+        if (digitCount >= 4) {
+          technicalFindings.push(
+            "Domain contains an unusually high number of digits."
+          );
+        }
+
+        const labels = hostname.split(".");
+
+        if (labels.some(label => label.length > 30)) {
+          technicalFindings.push(
+            "Domain contains an unusually long hostname section."
+          );
+        }
+
+        if (
+          labels.length >= 3 &&
+          labels[labels.length - 2].length <= 2
+        ) {
+          technicalFindings.push(
+            "Domain structure may require additional verification."
           );
         }
 
