@@ -329,152 +329,150 @@
 
     }
 
+function displayResult(rawResult, technicalFindings = []) {
 
-    function displayResult(rawResult) {
+  let parsed = null;
 
-      let parsed = null;
+  try {
+    parsed = JSON.parse(rawResult);
+  } catch {
+    const match =
+      String(rawResult).match(/\{[\s\S]*\}/);
 
-
+    if (match) {
       try {
-
-        parsed = JSON.parse(rawResult);
-
+        parsed = JSON.parse(match[0]);
       } catch {
-
-        const match =
-          String(rawResult).match(/\{[\s\S]*\}/);
-
-        if (match) {
-
-          try {
-            parsed = JSON.parse(match[0]);
-          } catch {
-            parsed = null;
-          }
-
-        }
-
+        parsed = null;
       }
+    }
+  }
 
+  let aiHTML = "";
 
-      if (!parsed) {
+  if (!parsed) {
 
-        resultBox.innerHTML = `
-          <div class="risk">
-            AI Analysis
-          </div>
+    aiHTML = `
+      <div class="risk">
+        AI Analysis
+      </div>
 
-          <div class="section">
-            ${formatText(rawResult)}
-          </div>
-        `;
+      <div class="section">
+        ${formatText(rawResult)}
+      </div>
+    `;
 
-        return;
-      }
+  } else {
 
+    const risk =
+      String(parsed.risk || "UNKNOWN").toUpperCase();
 
-      const risk =
-        String(parsed.risk || "UNKNOWN")
-          .toUpperCase();
+    const score =
+      parsed.score !== undefined
+        ? escapeHTML(String(parsed.score))
+        : "N/A";
 
+    const indicators =
+      Array.isArray(parsed.indicators)
+        ? parsed.indicators
+        : [];
 
-      const score =
-        parsed.score !== undefined
-          ? escapeHTML(String(parsed.score))
-          : "N/A";
-
-
-      const indicators =
-        Array.isArray(parsed.indicators)
-          ? parsed.indicators
+    const advice =
+      Array.isArray(parsed.advice)
+        ? parsed.advice
+        : parsed.advice
+          ? [parsed.advice]
           : [];
 
+    let indicatorsHTML = "";
 
-      const advice =
-        Array.isArray(parsed.advice)
-          ? parsed.advice
-          : parsed.advice
-            ? [parsed.advice]
-            : [];
+    if (indicators.length > 0) {
 
+      indicatorsHTML = `
+        <div class="section">
 
-      let indicatorsHTML = "";
-
-
-      if (indicators.length > 0) {
-
-        indicatorsHTML = `
-
-          <div class="section">
-
-            <div class="section-title">
-              Why
-            </div>
-
-            <ul>
-
-              ${indicators
-                .map(item =>
-                  `<li>${escapeHTML(String(item))}</li>`
-                )
-                .join("")}
-
-            </ul>
-
+          <div class="section-title">
+            Why
           </div>
 
-        `;
-
-      }
-
-
-      let adviceHTML = "";
-
-
-      if (advice.length > 0) {
-
-        adviceHTML = `
-
-          <div class="section">
-
-            <div class="section-title">
-              Recommended action
-            </div>
-
-            <ul>
-
-              ${advice
-                .map(item =>
-                  `<li>${escapeHTML(String(item))}</li>`
-                )
-                .join("")}
-
-            </ul>
-
-          </div>
-
-        `;
-
-      }
-
-
-      resultBox.innerHTML = `
-
-        <div class="risk">
-
-          ${escapeHTML(risk)}
-          RISK — ${score}/10
+          <ul>
+            ${indicators
+              .map(item =>
+                `<li>${escapeHTML(String(item))}</li>`
+              )
+              .join("")}
+          </ul>
 
         </div>
-
-        ${indicatorsHTML}
-
-        ${adviceHTML}
-
       `;
-
     }
 
+    let adviceHTML = "";
+
+    if (advice.length > 0) {
+
+      adviceHTML = `
+        <div class="section">
+
+          <div class="section-title">
+            Recommended action
+          </div>
+
+          <ul>
+            ${advice
+              .map(item =>
+                `<li>${escapeHTML(String(item))}</li>`
+              )
+              .join("")}
+          </ul>
+
+        </div>
+      `;
+    }
+
+    aiHTML = `
+      <div class="risk">
+        ${escapeHTML(risk)} RISK — ${score}/10
+      </div>
+
+      ${indicatorsHTML}
+
+      ${adviceHTML}
+    `;
+  }
+
+  let technicalHTML = "";
+
+  if (technicalFindings.length > 0) {
+
+    technicalHTML = `
+      <div class="section">
+
+        <div class="section-title">
+          Technical URL Inspection
+        </div>
+
+        <ul>
+          ${technicalFindings
+            .map(item =>
+              `<li>${escapeHTML(String(item))}</li>`
+            )
+            .join("")}
+        </ul>
+
+      </div>
+    `;
+  }
+
+  resultBox.innerHTML = `
+    ${technicalHTML}
+
+    ${aiHTML}
+  `;
+}
+    
+
+            
 
     function showError(message) {
 
