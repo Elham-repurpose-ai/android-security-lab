@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>CyberSafe AI</title>
 
   <style>
@@ -13,23 +12,26 @@
 
     body {
       margin: 0;
+      min-height: 100vh;
       font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: #f8fafc;
+      background: #0b1020;
+      color: #ffffff;
+      padding: 20px;
     }
 
     .container {
       max-width: 700px;
       margin: auto;
-      padding: 30px 18px;
     }
 
     h1 {
+      text-align: center;
       margin-bottom: 8px;
     }
 
     .subtitle {
-      color: #94a3b8;
+      text-align: center;
+      color: #aeb7cc;
       margin-bottom: 25px;
     }
 
@@ -38,18 +40,19 @@
       min-height: 180px;
       padding: 15px;
       border-radius: 12px;
-      border: 1px solid #334155;
-      background: #1e293b;
+      border: 1px solid #303a55;
+      background: #151c30;
       color: white;
       font-size: 16px;
       resize: vertical;
+      outline: none;
     }
 
     button {
       width: 100%;
       margin-top: 15px;
       padding: 15px;
-      border: 0;
+      border: none;
       border-radius: 12px;
       background: #2563eb;
       color: white;
@@ -58,13 +61,18 @@
       cursor: pointer;
     }
 
+    button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
     .result {
-      display: none;
-      margin-top: 25px;
+      margin-top: 20px;
       padding: 20px;
-      border-radius: 12px;
-      background: #1e293b;
-      border: 1px solid #334155;
+      border-radius: 14px;
+      background: #151c30;
+      border: 1px solid #303a55;
+      display: none;
     }
 
     .risk {
@@ -73,30 +81,29 @@
       margin-bottom: 15px;
     }
 
-    .high {
-      color: #ef4444;
+    .section {
+      margin-top: 15px;
     }
 
-    .medium {
-      color: #fbbf24;
+    .section-title {
+      font-weight: bold;
+      margin-bottom: 6px;
     }
 
-    .low {
-      color: #4ade80;
+    ul {
+      margin-top: 5px;
+      padding-left: 20px;
     }
 
-    .item {
-      margin: 10px 0;
-      padding: 12px;
-      background: #0f172a;
-      border-radius: 8px;
+    .error {
+      color: #ff8f8f;
     }
 
-    footer {
-      margin-top: 30px;
-      text-align: center;
-      color: #64748b;
+    .small {
+      color: #8f9ab3;
       font-size: 13px;
+      margin-top: 20px;
+      text-align: center;
     }
   </style>
 </head>
@@ -107,297 +114,217 @@
 
     <h1>CyberSafe AI</h1>
 
-    <p class="subtitle">
-      Security awareness assistant for suspicious messages and links.
-    </p>
+    <div class="subtitle">
+      AI-powered phishing and scam awareness assistant
+    </div>
 
     <textarea
-      id="input"
-      placeholder="Paste a suspicious message, email, or URL here..."></textarea>
+      id="message"
+      placeholder="Paste a suspicious message, email, or URL here..."
+    ></textarea>
 
-    <button onclick="analyze()">
-      Analyze
+    <button id="analyzeBtn">
+      Analyze with AI
     </button>
 
     <div id="result" class="result"></div>
 
-    <footer>
-      CyberSafe AI — Security Awareness Tool
-    </footer>
+    <div class="small">
+      AI analysis is an assessment and does not guarantee that content is safe or malicious.
+    </div>
 
   </div>
 
   <script>
+    const messageInput = document.getElementById("message");
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    const resultBox = document.getElementById("result");
 
-    function analyze() {
+    analyzeBtn.addEventListener("click", analyzeMessage);
 
-      const input = document.getElementById("input").value.trim();
-      const result = document.getElementById("result");
+    async function analyzeMessage() {
 
-      if (!input) {
-        result.style.display = "block";
+      const text = messageInput.value.trim();
 
-        result.innerHTML = `
-          <div class="risk medium">
-            No input
-          </div>
+      if (!text) {
+        showError("Please enter a message or URL first.");
+        return;
+      }
 
-          <div class="item">
-            Enter a message, email, or URL to analyze.
+      analyzeBtn.disabled = true;
+      analyzeBtn.textContent = "Analyzing...";
+
+      resultBox.style.display = "block";
+      resultBox.innerHTML = "CyberSafe AI is analyzing the content...";
+
+      try {
+
+        const response = await fetch("/api/analyze", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            text: text
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "AI request failed.");
+        }
+
+        displayAIResult(data.result);
+
+      } catch (error) {
+
+        showError(
+          "Could not connect to CyberSafe AI.<br><br>" +
+          escapeHTML(error.message)
+        );
+
+      } finally {
+
+        analyzeBtn.disabled = false;
+        analyzeBtn.textContent = "Analyze with AI";
+
+      }
+    }
+
+
+    function displayAIResult(rawResult) {
+
+      let parsed;
+
+      try {
+
+        parsed = JSON.parse(rawResult);
+
+      } catch {
+
+        const jsonMatch = rawResult.match(/\{[\s\S]*\}/);
+
+        if (jsonMatch) {
+
+          try {
+            parsed = JSON.parse(jsonMatch[0]);
+          } catch {
+            parsed = null;
+          }
+
+        }
+
+      }
+
+
+      if (!parsed) {
+
+        resultBox.innerHTML = `
+          <div class="risk">AI Analysis</div>
+
+          <div class="section">
+            ${formatText(rawResult)}
           </div>
         `;
 
         return;
       }
 
-      const lowerInput = input.toLowerCase();
 
-      let score = 0;
-      let warnings = [];
+      const risk = String(parsed.risk || "UNKNOWN").toUpperCase();
 
-      /* Suspicious language */
+      const score = parsed.score !== undefined
+        ? escapeHTML(String(parsed.score))
+        : "N/A";
 
-      const warningPatterns = [
+      const indicators = Array.isArray(parsed.indicators)
+        ? parsed.indicators
+        : [];
 
-        {
-          text: "urgent",
-          points: 2,
-          reason: "Creates pressure to act quickly."
-        },
+      const advice = Array.isArray(parsed.advice)
+        ? parsed.advice
+        : parsed.advice
+          ? [parsed.advice]
+          : [];
 
-        {
-          text: "verify your account",
-          points: 2,
-          reason: "Requests account verification."
-        },
 
-        {
-          text: "click",
-          points: 2,
-          reason: "Encourages clicking a link."
-        },
+      let indicatorsHTML = "";
 
-        {
-          text: "password",
-          points: 3,
-          reason: "Mentions sensitive authentication information."
-        },
+      if (indicators.length > 0) {
 
-        {
-          text: "verification code",
-          points: 3,
-          reason: "May involve a sensitive security code."
-        },
-
-        {
-          text: "recovery phrase",
-          points: 4,
-          reason: "Recovery phrases are highly sensitive."
-        },
-
-        {
-          text: "winner",
-          points: 2,
-          reason: "Prize-related language can be used in scams."
-        },
-
-        {
-          text: "prize",
-          points: 2,
-          reason: "Prize-related language can be used in scams."
-        },
-
-        {
-          text: "free",
-          points: 1,
-          reason: "Free offers can sometimes be used to attract victims."
-        },
-
-        {
-          text: "gift",
-          points: 1,
-          reason: "Gift-related offers can sometimes be used in scams."
-        },
-
-        {
-          text: "confirm your account",
-          points: 2,
-          reason: "Requests account confirmation."
-        },
-
-        {
-          text: "login",
-          points: 2,
-          reason: "Login-related language can be used in credential scams."
-        }
-
-      ];
-
-      warningPatterns.forEach(function(pattern) {
-
-        if (lowerInput.includes(pattern.text)) {
-
-          score += pattern.points;
-
-          warnings.push({
-            text: pattern.text,
-            reason: pattern.reason
-          });
-
-        }
-
-      });
-
-
-      /* URL detection */
-
-      const urlPattern = /https?:\/\/[^\s]+/gi;
-      const urls = input.match(urlPattern);
-
-      if (urls) {
-
-        urls.forEach(function(url) {
-
-          score += 1;
-
-          warnings.push({
-            text: "URL detected",
-            reason: "A link was found. Verify the domain before opening it."
-          });
-
-          try {
-
-            const cleanUrl = url.replace(/[.,!?;:)\]}]+$/g, "");
-            const link = new URL(cleanUrl);
-
-            const hostname = link.hostname.toLowerCase();
-
-            if (link.protocol !== "https:") {
-
-              score += 2;
-
-              warnings.push({
-                text: "Insecure connection",
-                reason: "The link does not use HTTPS."
-              });
-
-            }
-
-            if (hostname.includes("@")) {
-
-              score += 2;
-
-              warnings.push({
-                text: "Suspicious URL structure",
-                reason: "The URL contains an unusual structure that should be verified."
-              });
-
-            }
-
-            if (hostname.includes("-")) {
-
-              score += 1;
-
-              warnings.push({
-                text: "Unusual domain structure",
-                reason: "The domain contains a hyphen. Verify that it belongs to the expected organization."
-              });
-
-            }
-
-          } catch (error) {
-
-            warnings.push({
-              text: "URL format warning",
-              reason: "The detected link could not be fully analyzed."
-            });
-
-          }
-
-        });
-
-      }
-
-
-      /* Risk calculation */
-
-      let riskLevel;
-      let riskClass;
-
-      if (score >= 6) {
-
-        riskLevel = "HIGH RISK";
-        riskClass = "high";
-
-      } else if (score >= 3) {
-
-        riskLevel = "MEDIUM RISK";
-        riskClass = "medium";
-
-      } else {
-
-        riskLevel = "LOW RISK";
-        riskClass = "low";
-
-      }
-
-
-      /* Display result */
-
-      result.style.display = "block";
-
-      let warningHTML = "";
-
-      if (warnings.length > 0) {
-
-        warnings.forEach(function(warning) {
-
-          warningHTML += `
-            <div class="item">
-              <strong>${warning.text}</strong><br>
-              ${warning.reason}
-            </div>
-          `;
-
-        });
-
-      } else {
-
-        warningHTML = `
-          <div class="item">
-            No obvious warning patterns were detected.
+        indicatorsHTML = `
+          <div class="section">
+            <div class="section-title">Why</div>
+            <ul>
+              ${indicators
+                .map(item => `<li>${escapeHTML(String(item))}</li>`)
+                .join("")}
+            </ul>
           </div>
         `;
 
       }
 
 
-      result.innerHTML = `
+      let adviceHTML = "";
 
-        <div class="risk ${riskClass}">
-          ${riskLevel}
+      if (advice.length > 0) {
+
+        adviceHTML = `
+          <div class="section">
+            <div class="section-title">Recommended action</div>
+            <ul>
+              ${advice
+                .map(item => `<li>${escapeHTML(String(item))}</li>`)
+                .join("")}
+            </ul>
+          </div>
+        `;
+
+      }
+
+
+      resultBox.innerHTML = `
+        <div class="risk">
+          ${escapeHTML(risk)} RISK — ${score}/10
         </div>
 
-        <div class="item">
-          Risk score: <strong>${score}</strong>
-        </div>
+        ${indicatorsHTML}
 
-        ${warningHTML}
-
-        <div class="item">
-          <strong>Safety advice:</strong><br>
-          Do not provide passwords, verification codes,
-          recovery phrases, or financial information to
-          an unverified source.
-        </div>
-
-        <div class="item">
-          This is an automated security-awareness assessment.
-          A risk score does not prove that a message is malicious
-          or safe.
-        </div>
-
+        ${adviceHTML}
       `;
+    }
+
+
+    function showError(message) {
+
+      resultBox.style.display = "block";
+
+      resultBox.innerHTML = `
+        <div class="risk error">Error</div>
+        <div>${message}</div>
+      `;
+
+    }
+
+
+    function formatText(text) {
+
+      return escapeHTML(String(text))
+        .replace(/\n/g, "<br>");
+
+    }
+
+
+    function escapeHTML(value) {
+
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 
     }
 
