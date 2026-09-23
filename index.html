@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>CyberSafe AI</title>
 
   <style>
@@ -20,7 +21,7 @@
     }
 
     .container {
-      max-width: 700px;
+      max-width: 720px;
       margin: auto;
     }
 
@@ -33,6 +34,29 @@
       text-align: center;
       color: #aeb7cc;
       margin-bottom: 25px;
+    }
+
+    .modes {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .mode {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #303a55;
+      border-radius: 10px;
+      background: #151c30;
+      color: #cbd5e1;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    .mode.active {
+      background: #2563eb;
+      color: white;
+      border-color: #2563eb;
     }
 
     textarea {
@@ -48,7 +72,7 @@
       outline: none;
     }
 
-    button {
+    button.analyze {
       width: 100%;
       margin-top: 15px;
       padding: 15px;
@@ -61,7 +85,7 @@
       cursor: pointer;
     }
 
-    button:disabled {
+    button.analyze:disabled {
       opacity: 0.6;
       cursor: wait;
     }
@@ -104,6 +128,7 @@
       font-size: 13px;
       margin-top: 20px;
       text-align: center;
+      line-height: 1.5;
     }
   </style>
 </head>
@@ -118,64 +143,155 @@
       AI-powered phishing and scam awareness assistant
     </div>
 
+    <div class="modes">
+      <button class="mode active" id="messageMode">
+        Message
+      </button>
+
+      <button class="mode" id="urlMode">
+        URL
+      </button>
+    </div>
+
     <textarea
-      id="message"
-      placeholder="Paste a suspicious message, email, or URL here..."
+      id="inputText"
+      placeholder="Paste a suspicious message, email, or text here..."
     ></textarea>
 
-    <button id="analyzeBtn">
+    <button class="analyze" id="analyzeBtn">
       Analyze with AI
     </button>
 
     <div id="result" class="result"></div>
 
     <div class="small">
-      AI analysis is an assessment and does not guarantee that content is safe or malicious.
+      CyberSafe AI provides security-awareness analysis.
+      Do not enter real passwords, verification codes, recovery phrases,
+      or other secrets.
     </div>
 
   </div>
 
   <script>
-    const messageInput = document.getElementById("message");
+    const inputText = document.getElementById("inputText");
     const analyzeBtn = document.getElementById("analyzeBtn");
     const resultBox = document.getElementById("result");
 
-    analyzeBtn.addEventListener("click", analyzeMessage);
+    const messageMode = document.getElementById("messageMode");
+    const urlMode = document.getElementById("urlMode");
 
-    async function analyzeMessage() {
+    let currentMode = "message";
 
-      const text = messageInput.value.trim();
+
+    messageMode.addEventListener("click", () => {
+
+      currentMode = "message";
+
+      messageMode.classList.add("active");
+      urlMode.classList.remove("active");
+
+      inputText.placeholder =
+        "Paste a suspicious message, email, or text here...";
+
+      inputText.value = "";
+      resultBox.style.display = "none";
+
+    });
+
+
+    urlMode.addEventListener("click", () => {
+
+      currentMode = "url";
+
+      urlMode.classList.add("active");
+      messageMode.classList.remove("active");
+
+      inputText.placeholder =
+        "Paste a suspicious URL here...";
+
+      inputText.value = "";
+      resultBox.style.display = "none";
+
+    });
+
+
+    analyzeBtn.addEventListener("click", analyze);
+
+
+    async function analyze() {
+
+      const text = inputText.value.trim();
 
       if (!text) {
-        showError("Please enter a message or URL first.");
+        showError(
+          currentMode === "url"
+            ? "Please enter a URL first."
+            : "Please enter a message first."
+        );
+
         return;
       }
+
+
+      if (currentMode === "url") {
+
+        if (!isValidURL(text)) {
+
+          showError(
+            "Please enter a complete URL beginning with http:// or https://"
+          );
+
+          return;
+        }
+
+      }
+
 
       analyzeBtn.disabled = true;
       analyzeBtn.textContent = "Analyzing...";
 
       resultBox.style.display = "block";
-      resultBox.innerHTML = "CyberSafe AI is analyzing the content...";
+
+      resultBox.innerHTML =
+        "CyberSafe AI is analyzing the content...";
+
 
       try {
 
         const response = await fetch("/api/analyze", {
+
           method: "POST",
+
           headers: {
             "Content-Type": "application/json"
           },
+
           body: JSON.stringify({
-            text: text
+
+            text:
+              currentMode === "url"
+                ? "Analyze this URL for phishing, scam, credential theft, suspicious domain structure, redirects, and other security indicators. URL: " + text
+                : text
+
           })
+
         });
+
 
         const data = await response.json();
 
+
         if (!response.ok) {
-          throw new Error(data.error || "AI request failed.");
+
+          throw new Error(
+            data.error || "AI request failed."
+          );
+
         }
 
-        displayAIResult(data.result);
+
+        displayResult(data.result);
+
 
       } catch (error) {
 
@@ -190,12 +306,34 @@
         analyzeBtn.textContent = "Analyze with AI";
 
       }
+
     }
 
 
-    function displayAIResult(rawResult) {
+    function isValidURL(value) {
 
-      let parsed;
+      try {
+
+        const url = new URL(value);
+
+        return (
+          url.protocol === "http:" ||
+          url.protocol === "https:"
+        );
+
+      } catch {
+
+        return false;
+
+      }
+
+    }
+
+
+    function displayResult(rawResult) {
+
+      let parsed = null;
+
 
       try {
 
@@ -203,12 +341,13 @@
 
       } catch {
 
-        const jsonMatch = rawResult.match(/\{[\s\S]*\}/);
+        const match =
+          String(rawResult).match(/\{[\s\S]*\}/);
 
-        if (jsonMatch) {
+        if (match) {
 
           try {
-            parsed = JSON.parse(jsonMatch[0]);
+            parsed = JSON.parse(match[0]);
           } catch {
             parsed = null;
           }
@@ -221,7 +360,9 @@
       if (!parsed) {
 
         resultBox.innerHTML = `
-          <div class="risk">AI Analysis</div>
+          <div class="risk">
+            AI Analysis
+          </div>
 
           <div class="section">
             ${formatText(rawResult)}
@@ -232,36 +373,56 @@
       }
 
 
-      const risk = String(parsed.risk || "UNKNOWN").toUpperCase();
+      const risk =
+        String(parsed.risk || "UNKNOWN")
+          .toUpperCase();
 
-      const score = parsed.score !== undefined
-        ? escapeHTML(String(parsed.score))
-        : "N/A";
 
-      const indicators = Array.isArray(parsed.indicators)
-        ? parsed.indicators
-        : [];
+      const score =
+        parsed.score !== undefined
+          ? escapeHTML(String(parsed.score))
+          : "N/A";
 
-      const advice = Array.isArray(parsed.advice)
-        ? parsed.advice
-        : parsed.advice
-          ? [parsed.advice]
+
+      const indicators =
+        Array.isArray(parsed.indicators)
+          ? parsed.indicators
           : [];
+
+
+      const advice =
+        Array.isArray(parsed.advice)
+          ? parsed.advice
+          : parsed.advice
+            ? [parsed.advice]
+            : [];
 
 
       let indicatorsHTML = "";
 
+
       if (indicators.length > 0) {
 
         indicatorsHTML = `
+
           <div class="section">
-            <div class="section-title">Why</div>
+
+            <div class="section-title">
+              Why
+            </div>
+
             <ul>
+
               ${indicators
-                .map(item => `<li>${escapeHTML(String(item))}</li>`)
+                .map(item =>
+                  `<li>${escapeHTML(String(item))}</li>`
+                )
                 .join("")}
+
             </ul>
+
           </div>
+
         `;
 
       }
@@ -269,31 +430,49 @@
 
       let adviceHTML = "";
 
+
       if (advice.length > 0) {
 
         adviceHTML = `
+
           <div class="section">
-            <div class="section-title">Recommended action</div>
+
+            <div class="section-title">
+              Recommended action
+            </div>
+
             <ul>
+
               ${advice
-                .map(item => `<li>${escapeHTML(String(item))}</li>`)
+                .map(item =>
+                  `<li>${escapeHTML(String(item))}</li>`
+                )
                 .join("")}
+
             </ul>
+
           </div>
+
         `;
 
       }
 
 
       resultBox.innerHTML = `
+
         <div class="risk">
-          ${escapeHTML(risk)} RISK — ${score}/10
+
+          ${escapeHTML(risk)}
+          RISK — ${score}/10
+
         </div>
 
         ${indicatorsHTML}
 
         ${adviceHTML}
+
       `;
+
     }
 
 
@@ -302,8 +481,15 @@
       resultBox.style.display = "block";
 
       resultBox.innerHTML = `
-        <div class="risk error">Error</div>
-        <div>${message}</div>
+
+        <div class="risk error">
+          Error
+        </div>
+
+        <div>
+          ${message}
+        </div>
+
       `;
 
     }
@@ -320,6 +506,7 @@
     function escapeHTML(value) {
 
       return String(value)
+
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
